@@ -1,0 +1,39 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.venv/
+env/
+.env
+
+# Session cookies (highly sensitive, do not share)
+sessions/*.json
+sessions/profiles/
+!sessions/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Ngrok binary
+ngrok
+
+# Scraper output reports
+output/*
+!output/.gitkeep
+
+# Scratch media/temp files
+scratch/*.png
+scratch/*.jpg
+scratch/*.jpeg
+scratch/*.html
+scratch/mbasic_page.html
+
+# IDE configs
+.vscode/
+.idea/
+.DS_Store

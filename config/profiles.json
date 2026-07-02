@@ -1,0 +1,14 @@
+{
+  "profiles": [
+    {
+      "url": "https://www.youtube.com/@TRENDSOFINDIAPVTLTD",
+      "max_posts": 1,
+      "label": "Trends of India YT"
+    },
+    {
+      "url": "https://www.facebook.com/trendsofindiapvtltd",
+      "max_posts": 1,
+      "label": "Trends of India FB"
+    }
+  ]
+}

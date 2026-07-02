@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZDC URL Collector — Scrape & Post</title>
+    <meta name="description" content="Scrape social media profiles and post results to Telegram">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── Reset & Base ─────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.8);
+            --bg-glass: rgba(255, 255, 255, 0.04);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-pink: #ec4899;
+            --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            --gradient-accent: linear-gradient(135deg, #06b6d4, #3b82f6);
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.4);
+            --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.15);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Background Effects ───────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
+            z-index: 0;
+            animation: bgFloat 20s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgFloat {
+            0% { transform: translate(0, 0) rotate(0deg); }
+            100% { transform: translate(-20px, -20px) rotate(2deg); }
+        }
+
+        /* ── Layout ───────────────────────────────────────── */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* ── Header ───────────────────────────────────────── */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+            font-weight: 400;
+        }
+
+        .header .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        /* ── Tabs ─────────────────────────────────────────── */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 4px;
+            margin-bottom: 32px;
+            backdrop-filter: blur(12px);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 14px 20px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .tab-btn.active {
+            background: var(--gradient-primary);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .tab-btn .icon {
+            font-size: 1.1rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Cards ────────────────────────────────────────── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-subtitle {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 24px;
+        }
+
+        /* ── Form Elements ────────────────────────────────── */
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea {
+            min-height: 160px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        /* ── File Upload ──────────────────────────────────── */
+        .file-drop-zone {
+            border: 2px dashed var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 48px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .file-drop-zone:hover,
+        .file-drop-zone.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-drop-zone .drop-icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+
+        .file-drop-zone .drop-text {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .file-drop-zone .drop-hint {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .file-drop-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-info {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-top: 16px;
+        }
+
+        .file-info.visible {
+            display: flex;
+        }
+
+        .file-info .file-name {
+            flex: 1;
+            font-weight: 500;
+            color: var(--accent-green);
+        }
+
+        .file-info .file-remove {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 4px;
+        }
+
+        /* ── Buttons ──────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 32px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ── Results ──────────────────────────────────────── */
+        .results-area {
+            margin-top: 32px;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .result-card.success {
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .result-card.error {
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .result-card.pending {
+            border-left: 3px solid var(--accent-orange);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .result-platform {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .result-status {
+            margin-left: auto;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+        }
+
+        .result-status.success {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-green);
+        }
+
+        .result-status.error {
+            background: rgba(239, 68, 68, 0.12);
+            color: var(--accent-red);
+        }
+
+        .result-status.pending {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--accent-orange);
+        }
+
+        .result-links {
+            list-style: none;
+            padding: 0;
+        }
+
+        .result-links li {
+            padding: 4px 0;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+        }
+
+        .result-links a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+
+        .result-links a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Report Preview ───────────────────────────────── */
+        .report-container {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+        }
+
+        .report-header-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .report-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .report-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .report-btn-download {
+            background: rgba(6, 182, 212, 0.12);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .report-btn-download:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-primary);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .report-btn-copy {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .report-btn-copy:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .report-preview {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            max-height: 220px;
+            overflow-y: auto;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            text-align: left;
+        }
+
+        .report-preview::-webkit-scrollbar {
+            width: 8px;
+        }
+        .report-preview::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        .report-preview::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        .report-preview::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* ── Toast ────────────────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 14px 20px;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: white;
+            box-shadow: var(--shadow-lg);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 3.7s forwards;
+            max-width: 400px;
+        }
+
+        .toast.success { background: linear-gradient(135deg, #059669, #10b981); }
+        .toast.error { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .toast.info { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes toastOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* ── Progress ─────────────────────────────────────── */
+        .progress-bar {
+            display: none;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar.active {
+            display: block;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        /* ── Responsive ───────────────────────────────────── */
+        @media (max-width: 640px) {
+            .container { padding: 24px 16px; }
+            .header h1 { font-size: 1.8rem; }
+            .card { padding: 20px; }
+            .tabs { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>⚡ ZDC URL Collector</h1>
+            <p>Scrape social media profiles & post to Telegram</p>
+            <div class="badge">
+                <span class="dot"></span>
+                Telegram Connected
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="manual" id="tab-manual">
+                <span class="icon">✏️</span>
+                Manual Input
+            </button>
+            <button class="tab-btn" data-tab="upload" id="tab-upload">
+                <span class="icon">📁</span>
+                File Upload
+            </button>
+        </div>
+
+        <!-- Tab 1: Manual Input -->
+        <div class="tab-content active" id="content-manual">
+            <div class="card">
+                <div class="card-title">✏️ Manual Profile URLs</div>
+                <div class="card-subtitle">Enter social media profile URLs — one per line. Optionally add a brand name.</div>
+
+                <div class="form-group">
+                    <label for="brand-name">Brand / Label (optional)</label>
+                    <input type="text" id="brand-name" placeholder="e.g. Trends of India">
+                </div>
+
+                <div class="form-group">
+                    <label for="urls-input">Profile URLs</label>
+                    <textarea id="urls-input" placeholder="https://www.instagram.com/username/
+https://www.youtube.com/@channelname
+https://www.linkedin.com/in/username/
+https://www.facebook.com/pagename
+https://www.pinterest.com/username/"></textarea>
+                    <div class="form-hint">Supports: Instagram, YouTube, Facebook, LinkedIn, Pinterest</div>
+                </div>
+
+                <div class="form-group" style="display: none;">
+                    <label for="max-posts-manual">Max posts per profile</label>
+                    <input type="text" id="max-posts-manual" placeholder="1" value="1">
+                </div>
+
+                <div class="progress-info" id="progress-info-manual" style="display: none; margin-top: 15px; margin-bottom: 5px; font-size: 0.88rem; color: var(--text-secondary); justify-content: space-between; width: 100%;">
+                    <span id="progress-text-manual">0% (0/0 completed)</span>
+                    <span id="progress-time-manual" style="color: var(--accent-cyan);">Remaining: ~0m</span>
+                </div>
+
+                <div class="progress-bar" id="progress-manual">
+                    <div class="progress-fill" id="progress-fill-manual"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-scrape-manual" onclick="handleManualScrape()">
+                    <span class="spinner"></span>
+                    <span class="btn-text">🚀 Scrape & Send to Telegram</span>
+                </button>
+
+                <div class="results-area" id="results-manual"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: File Upload -->
+        <div class="tab-content" id="content-upload">
+            <div class="card">
+                <div class="card-title">📁 Upload Brand URLs File</div>
+                <div class="card-subtitle">Upload a TXT or XLSX file with social media URLs grouped by brand.</div>
+
+                <div class="file-drop-zone" id="drop-zone">
+                    <div class="drop-icon">📄</div>
+                    <div class="drop-text">Drop your file here or click to browse</div>
+                    <div class="drop-hint">Supports .txt and .xlsx files</div>
+                    <input type="file" id="file-input" accept=".txt,.xlsx,.xls">
+                </div>
+
+                <div class="file-info" id="file-info">
+                    <span>📎</span>
+                    <span class="file-name" id="file-name"></span>
+                    <button class="file-remove" onclick="clearFile()">✕</button>
+                </div>
+
+                <div class="form-group" style="display: none;">
+                    <label for="max-posts-upload">Max posts per profile</label>
+                    <input type="text" id="max-posts-upload" placeholder="1" value="1">
+                </div>
+
+                <div class="progress-info" id="progress-info-upload" style="display: none; margin-top: 15px; margin-bottom: 5px; font-size: 0.88rem; color: var(--text-secondary); justify-content: space-between; width: 100%;">
+                    <span id="progress-text-upload">0% (0/0 completed)</span>
+                    <span id="progress-time-upload" style="color: var(--accent-cyan);">Remaining: ~0m</span>
+                </div>
+
+                <div class="progress-bar" id="progress-upload">
+                    <div class="progress-fill" id="progress-fill-upload"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-scrape-upload" onclick="handleFileUpload()" style="margin-top: 20px;">
+                    <span class="spinner"></span>
+                    <span class="btn-text">🚀 Upload, Scrape & Send to Telegram</span>
+                </button>
+
+                <div class="results-area" id="results-upload"></div>
+            </div>
+
+            <!-- File format hint -->
+            <div class="card" style="padding: 24px;">
+                <div class="card-title" style="font-size: 1rem;">📋 File Format Guide</div>
+                <div class="card-subtitle" style="margin-bottom: 16px;">How to structure your file</div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <label style="margin-bottom: 10px;">TXT Format</label>
+                        <pre style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; overflow-x: auto;"># Brand Name
+https://instagram.com/brand
+https://youtube.com/@brand
+https://linkedin.com/company/brand
+
+# Another Brand
+https://instagram.com/other
+https://facebook.com/other</pre>
+                    </div>
+                    <div>
+                        <label style="margin-bottom: 10px;">XLSX Format</label>
+                        <pre style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 10px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; overflow-x: auto;">| Brand    | URL                         |
+|----------|-----------------------------|
+| Nike     | https://instagram.com/nike  |
+| Nike     | https://youtube.com/@nike   |
+| Adidas   | https://instagram.com/adidas|</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer style="text-align: center; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border-glass); color: var(--text-muted); font-size: 0.85rem;">
+            Developed by <a href="https://github.com/ZeroDayCops" target="_blank" style="color: var(--accent-cyan); text-decoration: none; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.color='var(--accent-blue)'" onmouseout="this.style.color='var(--accent-cyan)'">ZeroDayCops</a>
+        </footer>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // ── Tabs ─────────────────────────────────────────
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('content-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ── File Drop Zone ───────────────────────────────
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        ['dragenter', 'dragover'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(e => {
+            dropZone.addEventListener(e, (ev) => {
+                ev.preventDefault();
+                dropZone.classList.remove('dragover');
+            });
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                showFileInfo(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                showFileInfo(fileInput.files[0]);
+            }
+        });
+
+        function showFileInfo(file) {
+            document.getElementById('file-name').textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+            document.getElementById('file-info').classList.add('visible');
+        }
+
+        function clearFile() {
+            fileInput.value = '';
+            document.getElementById('file-info').classList.remove('visible');
+        }
+
+        // ── Toast ────────────────────────────────────────
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // ── Response Parser Helper ───────────────────────
+        async function parseJSONResponse(response) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || JSON.stringify(data));
+                }
+                return data;
+            }
+            
+            const text = await response.text();
+            let errorMessage = `Server returned status ${response.status}`;
+            if (response.status === 502) {
+                errorMessage = "Server is offline or restarting (502 Bad Gateway). Please wait and try again.";
+            } else if (response.status === 504) {
+                errorMessage = "Gateway timeout (504). Please try again.";
+            } else if (response.status === 404) {
+                errorMessage = "Endpoint not found (404). Please check configuration.";
+            } else {
+                const titleMatch = text.match(/<title>([\s\S]*?)<\/title>/i);
+                if (titleMatch && titleMatch[1]) {
+                    errorMessage = `Server error: ${titleMatch[1].trim()}`;
+                }
+            }
+            throw new Error(errorMessage);
+        }
+
+        // ── Polling & Status Helpers ─────────────────────
+        function pollStatus(runId, progressFill, progressBar, resultsArea, btn, isUpload) {
+            const prefix = isUpload ? 'upload' : 'manual';
+            const progressInfo = document.getElementById(`progress-info-${prefix}`);
+            const progressText = document.getElementById(`progress-text-${prefix}`);
+            const progressTime = document.getElementById(`progress-time-${prefix}`);
+
+            if (progressInfo) {
+                progressInfo.style.display = 'flex';
+                progressText.textContent = `0% (0/0 completed)`;
+                progressTime.textContent = 'Estimating time...';
+            }
+
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/status/${runId}`);
+                    const data = await parseJSONResponse(response);
+                    
+                    // Update progress bar & text
+                    if (data.total > 0) {
+                        const percent = Math.round((data.progress / data.total) * 100);
+                        progressFill.style.width = `${percent}%`;
+                        
+                        if (progressText) {
+                            progressText.textContent = `${percent}% (${data.progress}/${data.total} completed)`;
+                        }
+
+                        if (progressTime) {
+                            const remaining = data.total - data.progress;
+                            if (remaining > 0) {
+                                // Average profile processing takes ~32s (14s sleep + 18s page/stealth pauses)
+                                const remainingSeconds = remaining * 32;
+                                const mins = Math.floor(remainingSeconds / 60);
+                                const secs = remainingSeconds % 60;
+                                progressTime.textContent = `Remaining: ~${mins}m ${secs}s`;
+                            } else {
+                                progressTime.textContent = 'Finishing report...';
+                            }
+                        }
+                    }
+
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        progressFill.style.width = '100%';
+                        if (progressText) progressText.textContent = `100% (${data.total}/${data.total} completed)`;
+                        if (progressTime) progressTime.textContent = 'Done!';
+                        
+                        if (isUpload) {
+                            showToast(`✅ Done! ${data.total_new_posts} posts sent across ${data.brands_processed} brand(s)`, 'success');
+                            renderBrandResults(resultsArea, data.brand_results);
+                        } else {
+                            showToast(`✅ Done! ${data.total_new_posts} posts sent to Telegram`, 'success');
+                            renderResults(resultsArea, data.results);
+                        }
+
+                        if (data.output_file) {
+                            await displayReport(resultsArea, data.output_file);
+                        }
+
+                        resetButtonState(btn, progressBar, progressFill, true);
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showToast(`❌ Error: ${data.error || 'Scrape failed'}`, 'error');
+                        resetButtonState(btn, progressBar, progressFill);
+                    }
+                } catch (err) {
+                    clearInterval(pollInterval);
+                    showToast('Polling error: ' + err.message, 'error');
+                    resetButtonState(btn, progressBar, progressFill);
+                }
+            }, 3000);
+        }
+
+        function resetButtonState(btn, progressBar, progressFill, success = false) {
+            btn.classList.remove('loading');
+            btn.disabled = false;
+            setTimeout(() => {
+                progressBar.classList.remove('active');
+                progressFill.style.width = '0%';
+                
+                const prefix = btn.id.includes('upload') ? 'upload' : 'manual';
+                const progressInfo = document.getElementById(`progress-info-${prefix}`);
+                if (progressInfo) progressInfo.style.display = 'none';
+            }, success ? 7000 : 2000);
+        }
+
+        // ── Manual Scrape ────────────────────────────────
+        async function handleManualScrape() {
+            const brand = document.getElementById('brand-name').value.trim();
+            const urlsRaw = document.getElementById('urls-input').value.trim();
+            const maxPosts = 1;
+
+            if (!urlsRaw) {
+                showToast('Please enter at least one URL', 'error');
+                return;
+            }
+
+            const urls = urlsRaw.split('\n').map(u => u.trim()).filter(u => u && !u.startsWith('#'));
+            if (urls.length === 0) {
+                showToast('No valid URLs found', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-scrape-manual');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const progressBar = document.getElementById('progress-manual');
+            const progressFill = document.getElementById('progress-fill-manual');
+            progressBar.classList.add('active');
+
+            const resultsArea = document.getElementById('results-manual');
+            resultsArea.innerHTML = '';
+
+            showToast(`Scraping task queued in background...`, 'info');
+
+            try {
+                const response = await fetch('/api/scrape-and-post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        brand_name: brand || 'Manual Scrape',
+                        urls: urls,
+                        max_posts: maxPosts,
+                    }),
+                });
+
+                const data = await parseJSONResponse(response);
+
+                if (data.run_id) {
+                    pollStatus(data.run_id, progressFill, progressBar, resultsArea, btn, false);
+                } else {
+                    showToast('Error: Missing run_id in response', 'error');
+                    resetButtonState(btn, progressBar, progressFill);
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+                resetButtonState(btn, progressBar, progressFill);
+            }
+        }
+
+        // ── File Upload Scrape ───────────────────────────
+        async function handleFileUpload() {
+            const file = fileInput.files[0];
+            if (!file) {
+                showToast('Please select a file first', 'error');
+                return;
+            }
+
+            const maxPosts = 1;
+
+            const btn = document.getElementById('btn-scrape-upload');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const progressBar = document.getElementById('progress-upload');
+            const progressFill = document.getElementById('progress-fill-upload');
+            progressBar.classList.add('active');
+
+            const resultsArea = document.getElementById('results-upload');
+            resultsArea.innerHTML = '';
+
+            showToast(`Uploading and queueing ${file.name}...`, 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('max_posts', maxPosts);
+
+                const response = await fetch('/api/upload-and-post', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await parseJSONResponse(response);
+
+                if (data.run_id) {
+                    pollStatus(data.run_id, progressFill, progressBar, resultsArea, btn, true);
+                } else {
+                    showToast('Error: Missing run_id in response', 'error');
+                    resetButtonState(btn, progressBar, progressFill);
+                }
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+                resetButtonState(btn, progressBar, progressFill);
+            }
+        }
+
+        // ── Render Results ───────────────────────────────
+        const platformEmoji = {
+            instagram: '📸', youtube: '▶️', facebook: '📘',
+            linkedin: '💼', pinterest: '📌'
+        };
+
+        function renderResults(container, results) {
+            // Filter results to only show cards that failed OR succeeded and have new posts
+            const activeResults = results ? results.filter(r => r.status !== 'success' || (r.posts && r.posts.length > 0)) : [];
+
+            if (activeResults.length === 0) {
+                container.innerHTML = '<div class="result-card pending"><div class="result-header"><span class="result-platform">No new posts found to send</span></div></div>';
+                return;
+            }
+
+            activeResults.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'result-card ' + (r.status === 'success' ? 'success' : 'error');
+
+                const emoji = platformEmoji[r.platform] || '🌐';
+                const posts = r.posts || [];
+
+                card.innerHTML = `
+                    <div class="result-header">
+                        <span>${emoji}</span>
+                        <span class="result-platform">${(r.platform || 'Unknown').toUpperCase()}</span>
+                        <span class="result-status ${r.status}">${r.status === 'success' ? `✅ ${r.posts_sent || 0} sent` : '❌ Failed'}</span>
+                    </div>
+                    <ul class="result-links">
+                        ${posts.map(p => `<li>🔗 <a href="${p.post_url}" target="_blank">${p.post_url}</a></li>`).join('')}
+                    </ul>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderBrandResults(container, brandResults) {
+            if (!brandResults || Object.keys(brandResults).length === 0) {
+                container.innerHTML = '<div class="result-card pending"><div class="result-header"><span class="result-platform">No results found</span></div></div>';
+                return;
+            }
+
+            Object.entries(brandResults).forEach(([brand, results]) => {
+                const section = document.createElement('div');
+                section.innerHTML = `<h3 style="margin: 16px 0 8px; font-size: 1rem; color: var(--accent-cyan);">👤 ${brand}</h3>`;
+                container.appendChild(section);
+                renderResults(container, results);
+            });
+        }
+
+        // ── Report Preview Renderers ─────────────────────
+        async function displayReport(container, filename) {
+            if (!filename) return;
+
+            const reportDiv = document.createElement('div');
+            reportDiv.className = 'report-container';
+            reportDiv.id = 'report-container-' + filename.replace(/\./g, '_');
+
+            reportDiv.innerHTML = `
+                <div class="report-header-wrapper">
+                    <span class="report-title">📝 Report: ${filename}</span>
+                    <div class="report-actions">
+                        <a href="/output/${filename}" download="${filename}" class="report-btn report-btn-download">
+                            📥 Download
+                        </a>
+                        <button class="report-btn report-btn-copy" onclick="copyReportText(this, '${filename}')">
+                            📋 Copy Report
+                        </button>
+                    </div>
+                </div>
+                <pre class="report-preview" id="report-text-${filename.replace(/\./g, '_')}">Loading report content...</pre>
+            `;
+
+            // Prepend so the report preview is at the top of the results area
+            if (container.firstChild) {
+                container.insertBefore(reportDiv, container.firstChild);
+            } else {
+                container.appendChild(reportDiv);
+            }
+
+            try {
+                const response = await fetch(`/output/${filename}`);
+                const previewEl = document.getElementById('report-text-' + filename.replace(/\./g, '_'));
+                if (response.ok) {
+                    const text = await response.text();
+                    previewEl.textContent = text.trim();
+                } else {
+                    previewEl.textContent = '⚠️ Failed to load report contents.';
+                }
+            } catch (e) {
+                const previewEl = document.getElementById('report-text-' + filename.replace(/\./g, '_'));
+                if (previewEl) {
+                    previewEl.textContent = `⚠️ Error loading report: ${e.message}`;
+                }
+            }
+        }
+
+        async function copyReportText(btn, filename) {
+            const previewId = 'report-text-' + filename.replace(/\./g, '_');
+            const textEl = document.getElementById(previewId);
+            if (!textEl) return;
+
+            const text = textEl.textContent;
+            if (text.startsWith('Loading') || text.startsWith('⚠️')) return;
+
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Copied!';
+                showToast('Report content copied to clipboard', 'success');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            } catch (err) {
+                showToast('Failed to copy text: ' + err, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
